@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: telegram-bot
+    env: python
+    runtime: python-3.11.9
+    buildCommand: |
+      python -m pip install --upgrade pip
+      python -m pip install --no-cache-dir --prefer-binary aiogram==3.4.1 python-dotenv "pydantic<2.6"
+    startCommand: python app.py
