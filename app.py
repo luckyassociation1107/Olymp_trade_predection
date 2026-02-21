@@ -1,11 +1,11 @@
 import asyncio
-from user_bot import user_dp
-from admin_bot import admin_dp
+from user_bot import start_user_bot
+from admin_bot import start_admin_bot
 
 async def main():
     await asyncio.gather(
-        user_dp.start_polling(),
-        admin_dp.start_polling()
+        start_user_bot(),
+        start_admin_bot()
     )
 
 if __name__ == "__main__":
