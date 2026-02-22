@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotComm
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
 # --- Configuration ---
-TOKEN = "8361917661:AAFjCkSYgZZm5BJaxHn8vst1nDDRHhrbeIY" 
+TOKEN = "8361917661:AAFk276iJeAOw9ucXCVPchBscSlEYmI1HS8" 
 ADMIN_IDS = [6809528328, 7978913926] 
 DB_PATH = "olymp_prediction_bot.db"
 QR_PATH = "admin_qr_payment.jpg"
