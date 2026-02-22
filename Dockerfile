@@ -1,22 +1,16 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
 WORKDIR /app
 
-# system deps (safe)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Install DNS tools
+RUN apt-get update && apt-get install -y dnsutils && rm -rf /var/lib/apt/lists/*
 
-# copy requirements first (cache friendly)
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir --prefer-binary -r requirements.txt
-
-# copy project
 COPY . .
 
-CMD ["python", "app.py"]
+# CRITICAL: Force the container to use Google DNS
+RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
+CMD ["python", "bot.py"]
