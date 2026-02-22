@@ -7,9 +7,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 # --- Configuration ---
 TOKEN = "8361917661:AAFk276iJeAOw9ucXCVPchBscSlEYmI1HS8" 
-ADMIN_IDS = [6809528328, 7978913926] 
+ADMIN_IDS = [6809528328] 
 DB_PATH = "olymp_prediction_bot.db"
-QR_PATH = "admin_qr_payment.jpg"
+QR_PATH = "olymp_admin_qr.jpg"
 
 admin_sessions = {} 
 admin_modes = {}
@@ -23,14 +23,17 @@ payment_info = {"upi": "Not Set"}
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- Health Check Server for UptimeRobot ---
+# --- Health Check Server (Fixed for Render HEAD request) ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # UptimeRobot ping chesinappudu ee response velthundi
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(b"Bot is Online and Active!")
+        self.wfile.write(b"Bot is Online!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
 
 def run_health_server():
     port = int(os.environ.get("PORT", 10000))
@@ -48,20 +51,25 @@ def init_db():
     db_query("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, is_vip INTEGER DEFAULT 0)")
     db_query("CREATE TABLE IF NOT EXISTS posts (msg_id INTEGER, chat_id INTEGER, date TEXT)")
 
-# --- Auto-Delete Task ---
-async def auto_delete_scheduler(context: ContextTypes.DEFAULT_TYPE):
+# --- Auto-Delete Task (Fixed context issue) ---
+async def auto_delete_scheduler(app: Application):
     while True:
-        now = datetime.now(IST)
-        today_str = now.strftime("%Y-%m-%d")
-        if now.hour == 0 and now.minute == 0:
-            current_predictions["FREE"] = None
-            current_predictions["VIP"] = None
-        
-        old_posts = db_query("SELECT msg_id, chat_id FROM posts WHERE date != ?", (today_str,), fetch=True)
-        for msg_id, chat_id in old_posts:
-            try: await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
-            except: pass
-        db_query("DELETE FROM posts WHERE date != ?", (today_str,))
+        try:
+            now = datetime.now(IST)
+            today_str = now.strftime("%Y-%m-%d")
+            
+            if now.hour == 0 and now.minute == 0:
+                current_predictions["FREE"] = None
+                current_predictions["VIP"] = None
+            
+            old_posts = db_query("SELECT msg_id, chat_id FROM posts WHERE date != ?", (today_str,), fetch=True)
+            for msg_id, chat_id in old_posts:
+                try: await app.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+                except: pass
+            db_query("DELETE FROM posts WHERE date != ?", (today_str,))
+        except Exception as e:
+            logger.error(f"Error in scheduler: {e}")
+            
         await asyncio.sleep(60)
 
 # --- Keyboards ---
@@ -83,8 +91,6 @@ def get_admin_keyboard():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     db_query("INSERT OR IGNORE INTO users (id, is_vip) VALUES (?, 0)", (uid,))
-    
-    # Registering Menu Button
     await context.bot.set_my_commands([BotCommand("start", "🚀 Open Main Menu")])
 
     if uid in ADMIN_IDS:
@@ -184,19 +190,28 @@ async def login(u, c):
 
 async def run_bot():
     init_db()
-    # Start Health Server in background
     threading.Thread(target=run_health_server, daemon=True).start()
     
     app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start)); app.add_handler(CommandHandler("login", login))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("login", login))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
     
-    async with app:
-        await app.initialize(); await app.start()
-        asyncio.create_task(auto_delete_scheduler(app.context))
-        await app.updater.start_polling(drop_pending_updates=True)
-        while True: await asyncio.sleep(10)
+    # Corrected Background Task & App Lifecycle
+    await app.initialize()
+    await app.start()
+    asyncio.create_task(auto_delete_scheduler(app)) # Fixed context issue here
+    
+    logger.info("Bot started successfully.")
+    await app.updater.start_polling(drop_pending_updates=True)
+    
+    # Keep the application running
+    while True:
+        await asyncio.sleep(10)
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    try:
+        asyncio.run(run_bot())
+    except (KeyboardInterrupt, SystemExit):
+        pass
