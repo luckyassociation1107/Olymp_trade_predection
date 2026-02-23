@@ -7,14 +7,14 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 # --- Configuration ---
 TOKEN = "8361917661:AAG8NW-jVjw0Dfd0_9Mq43OMAd1V5ZgoDyU" 
-ADMIN_IDS = [6809528328] 
+ADMIN_IDS = [6809528328, 7978913926] 
 DB_PATH = "olymp_prediction_bot.db"
 QR_PATH = "olymp_admin_qr.jpg"
 
 admin_sessions = {} 
 admin_modes = {}
 admin_pass = "09262005"
-SESSION_TIME = 3600
+SESSION_TIME = 31536000
 IST = pytz.timezone('Asia/Kolkata')
 
 current_predictions = {"FREE": None, "VIP": None} 
